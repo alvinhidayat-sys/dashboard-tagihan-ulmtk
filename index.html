@@ -21,6 +21,7 @@
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+html{overflow-anchor:none;}
 body{font-family:'IBM Plex Sans',sans-serif; font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;}
 .mono{font-family:'IBM Plex Mono',monospace;}
 h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0; letter-spacing:-0.01em;}
@@ -29,13 +30,14 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0; letter-spacing:-0.01e
 .wrap{max-width:1320px; margin:0 auto; padding:28px 24px 60px;}
 
 .header{display:flex; align-items:flex-start; justify-content:space-between; gap:24px; padding:14px 24px 20px; border-bottom:1px solid var(--border); margin-bottom:22px; flex-wrap:wrap;
-  position:sticky; top:0; z-index:60; background:var(--bg); margin-left:-24px; margin-right:-24px; width:calc(100% + 48px); box-shadow:0 2px 10px rgba(0,0,0,.12);}
+  position:sticky; top:0; z-index:60; background:var(--bg); margin-left:-24px; margin-right:-24px; width:calc(100% + 48px); box-shadow:0 2px 10px rgba(0,0,0,.12);
+  transition:padding .18s ease, box-shadow .18s ease;}
 .header .title-block{display:flex; align-items:center; gap:14px;}
 .bolt{height:46px; width:auto; flex-shrink:0; object-fit:contain;}
-.header h1{font-size:18px; font-weight:600; color:var(--text); line-height:1.35;}
-.header p{margin:4px 0 0; color:var(--text-dim); font-size:13px;}
+.header h1{font-size:18px; font-weight:600; color:var(--text); line-height:1.35; transition:font-size .18s ease;}
+.header p{margin:4px 0 0; color:var(--text-dim); font-size:13px; max-height:40px; overflow:hidden; transition:max-height .18s ease, margin .18s ease, opacity .18s ease;}
 .header-right{display:flex; align-items:center; gap:18px; flex-wrap:wrap; justify-content:flex-end;}
-.logo-prisma{height:64px; width:auto; flex-shrink:0; object-fit:contain;}
+.logo-prisma{height:64px; width:auto; flex-shrink:0; object-fit:contain; transition:height .18s ease;}
 .theme-toggle{display:flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer; color:var(--text-dim); padding:2px; font-family:'IBM Plex Sans',sans-serif;}
 .theme-toggle-icon{font-size:13px; line-height:1;}
 .theme-toggle-track{width:38px; height:20px; border-radius:10px; background:var(--panel-2); border:1px solid var(--border); position:relative; transition:background .15s;}
@@ -56,6 +58,14 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0; letter-spacing:-0.01e
 .refresh-btn svg{width:12px; height:12px;}
 .refresh-btn.spinning svg{animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* Header mode ringkas (otomatis saat halaman di-scroll ke bawah) */
+.header.is-compact{padding:8px 24px 10px; box-shadow:0 12px 18px -14px rgba(0,0,0,.45);}
+.header.is-compact h1{font-size:15px;}
+.header.is-compact p{max-height:0; margin-top:0; opacity:0;}
+.header.is-compact .logo-prisma{height:38px;}
+.header.is-compact .status-block{flex-direction:row; align-items:center; gap:14px;}
+.header.is-compact .refresh-btn{padding:5px 11px;}
 
 .filters{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:22px;
   position:sticky; z-index:50; box-shadow:0 4px 10px rgba(0,0,0,.10);}
@@ -792,6 +802,28 @@ function updateStickyOffsets(){
 }
 window.addEventListener('resize', updateStickyOffsets);
 updateStickyOffsets();
+
+/* ---------- animasi header saat scroll (mode ringkas) ---------- */
+(function(){
+  const headerEl = document.getElementById('mainHeader');
+  if(!headerEl) return;
+  let compact = false, ticking = false;
+  function update(){
+    ticking = false;
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    // Histeresis (100px / 24px) supaya tidak berkedip di batas scroll.
+    if(!compact && y > 100){
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      if(room > 260){ compact = true; headerEl.classList.add('is-compact'); }
+    }else if(compact && y < 24){
+      compact = false; headerEl.classList.remove('is-compact');
+    }
+  }
+  window.addEventListener('scroll', ()=>{ if(!ticking){ ticking = true; requestAnimationFrame(update); } }, {passive:true});
+  // Posisi sticky filter ikut menyesuaikan selama tinggi header berubah (animasi).
+  if('ResizeObserver' in window) new ResizeObserver(updateStickyOffsets).observe(headerEl);
+  else headerEl.addEventListener('transitionend', updateStickyOffsets);
+})();
 
 
 applyDataToUI();
